@@ -1,0 +1,63 @@
+Before upgrading the firmware, the user needs to check if the following tools are in the /6512-32r_firmware folder:
+1. gpio_i2c.ko: The tool to set up the environment.
+2. updateCPLD: The tool for upgrading the CPLD firmware.
+3. jbimain: The tool for upgrading the FPGA firmware.
+
+[Update FPGA]
+jbimain is a tool used to update the main board FPGA. The update process is as follows:
+1. Upload the firmware to the target. The file name is <FIRMWARE>.jbc.
+    1.1 Copy by USB
+        admin@sonic:~$ sudo su
+        root@sonic:/home/admin# mount /dev/sdb4 /mnt
+        root@sonic:/home/admin# cp -r /mnt/ 6512-32r_firmware .
+        root@sonic:/home/admin# cd 6512-32r_firmware/
+        root@sonic:/home/admin/6512-32r_firmware# chmod 775 jbimain
+
+    1.2 Copy by SCP
+        admin@sonic:~$ sudo su
+        root@sonic:/home/admin# scp -r cody@192.168.80.124:/home/cody/workplace/6512-32r_firmware .
+        root@sonic:/home/admin# cd 6512-32r_firmware/
+        root@sonic:/home/admin/6512-32r_firmware# chmod 775 jbimain
+
+2. Main board FPGA upgrade
+    cd /root
+    /home/admin/6512-32r_firmware/jbimain -i <MAIN_BOARD_FPGA_FIRMWARE>
+    /home/admin/6512-32r_firmware/jbimain -B -aPROGRAM -dDO_REAL_TIME_ISP=1 <MAIN_BOARD_FPGA_FIRMWARE>
+    /home/admin/6512-32r_firmware/jbimain -B -aREAD_USERCODE <MAIN_BOARD_FPGA_FIRMWARE>
+
+3. CPU FPGA upgrade
+    cd /root
+    /home/admin/6512-32r_firmware/jbimain -i <CPU_BOARD_FPGA_FIRMWARE>
+    /home/admin/6512-32r_firmware/jbimain -aPROGRAM -dDO_REAL_TIME_ISP=1 <CPU_BOARD_FPGA_FIRMWARE>
+    /home/admin/6512-32r_firmware/jbimain -aREAD_USERCODE <CPU_BOARD_FPGA_FIRMWARE>
+
+4. AC power cycle
+
+[CPLD update]
+updateCPLD and the gpio_i2c.ko driver are used to update the main board CPLD. The update process is as follows:
+1. Upload the firmware to the target. The file name is <FIRMWARE>.jed.
+    1.1 Copy by USB
+        admin@sonic:~$ sudo su
+        root@sonic:/home/admin# mount /dev/sdb4 /mnt
+        root@sonic:/home/admin# cp -r /mnt/ 6512-32r_firmware .
+        root@sonic:/home/admin# cd 6512-32r_firmware/
+        root@sonic:/home/admin/6512-32r_firmware# chmod 775 updateCPLD
+
+    1.2 Copy by SCP
+        admin@sonic:~$ sudo su
+        root@sonic:/home/admin# scp -r cody@192.168.80.124:/home/cody/workplace/6512-32r_firmware .
+        root@sonic:/home/admin# cd 6512-32r_firmware/
+        root@sonic:/home/admin/6512-32r_firmware# chmod 775 updateCPLD
+
+2. Switch the I2C bus from BMC to CPU
+    root@sonic:/home/admin/6512-32r_firmware# ipmitool raw 0x30 0x80 0x1
+
+    # Enable CPU update CPLD path
+    root@sonic:/home/admin/6512-32r_firmware# i2cset -f -y 0 0x30 0xB0 0x1
+
+    root@sonic:/home/admin/6512-32r_firmware# modprobe i2c-gpio
+    root@sonic:/home/admin/6512-32r_firmware# insmod gpio_i2c.ko
+    root@sonic:/home/admin/6512-32r_firmware# ./updateCPLD 70 0x34 <CPLD1_FIRMWARE>.jed
+    root@sonic:/home/admin/6512-32r_firmware# ./updateCPLD 70 0x3C <CPLD2_FIRMWARE>.jed
+
+3. AC power cycle
